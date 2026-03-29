@@ -2,7 +2,16 @@ struct PowerDiagramCell{T <: Real}
     index :: Int
     circle :: Circle{T}
     neighbours :: Vector{Int}
-    polygon :: Vector{Tuple{T, T}}
+    polygon :: Vector{Complex{T}}
+    
+    function PowerDiagramCell(index :: Int, circle :: Circle{T}, neighbours :: Vector{Int}, polygon :: Vector{Complex{T}})
+        area = zero(T)
+        for i in eachindex(polygon)
+            area += imag(polygon[mod1(i + 1, length(polygon))] * conj(polygon[i]))
+        end
+        area < zero(T) && reverse!(polygon)
+        new{T}(index, circle, neighbours, polygon)
+    end
 end
 
 function power_diagram(circles :: AbstractVector{Circle{T}}) where {T}
@@ -38,7 +47,7 @@ function _power_diagram(circles :: AbstractVector{Circle{T}}) where {T}
         PowerDiagramCell(
             i, circles[i],
             sort!([j for j in get_neighbours(tri, i) if j > 0]),
-            get_polygon_coordinates(vor, i, bbox)[begin : end - 1]
+            map(x -> (x[1] + im * x[2]), (@view get_polygon_coordinates(vor, i, bbox)[begin : end - 1]))
         ) for i in sort!(collect(each_generator(vor)))
     ]
 end
@@ -132,13 +141,10 @@ function _collinear_power_diagram(circles :: AbstractVector{Circle{T}}) where {T
                 cells, PowerDiagramCell(
                     curr, circles[curr],
                     neighbours, [
-                        (real(z), imag(z))
-                        for z in [
-                            z0 + sprev * ds - rmax * dr,
-                            z0 + scurr * ds - rmax * dr,
-                            z0 + scurr * ds + rmax * dr,
-                            z0 + sprev * ds + rmax * dr,
-                        ]
+                        z0 + sprev * ds - rmax * dr,
+                        z0 + scurr * ds - rmax * dr,
+                        z0 + scurr * ds + rmax * dr,
+                        z0 + sprev * ds + rmax * dr,
                     ]
                 )
             )
