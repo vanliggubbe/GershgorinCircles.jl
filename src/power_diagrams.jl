@@ -24,9 +24,10 @@ end
 function _power_diagram(circles :: AbstractVector{Circle{T}}) where {T}
     isempty(circles) && return PowerDiagramCell{T}[]
 
-    points = [(real(circle.center), imag(circle.center)) for circle in circles]
-    weights = [circle.radius ^ 2 for circle in circles]
-    tri = triangulate(points; weights=weights)
+    tri = triangulate(
+        [(real(circle.center), imag(circle.center)) for circle in circles];
+        weights = [circle.radius ^ 2 for circle in circles]
+    )
     vor = voronoi(tri)
 
     bbox = (
