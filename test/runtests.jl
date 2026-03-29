@@ -3,6 +3,21 @@ using LinearAlgebra
 using SparseArrays
 using Test
 
+same_point(p, q) = isapprox(p[1], q[1]) && isapprox(p[2], q[2])
+
+function same_polygon(actual, expected)
+    length(actual) == length(expected) || return false
+    n = length(actual)
+
+    for shift in 0:(n - 1)
+        if all(same_point(actual[mod1(i + shift, n)], expected[i]) for i in 1:n)
+            return true
+        end
+    end
+
+    false
+end
+
 @testset "GershgorinCircles.jl" begin
     @testset "Circle validation" begin
         @test_throws ArgumentError Circle(0.0 + 0.0im, -1.0)
@@ -34,6 +49,34 @@ using Test
 
         @test eltype(cells) == PowerDiagramCell{Float64}
         @test all(cell -> eltype(cell.polygon) == Tuple{Float64, Float64}, cells)
+    end
+
+    @testset "Collinear power diagram" begin
+        circles = [
+            Circle(0.0, 0.0, 1.0),
+            Circle(2.0, 0.0, 1.0),
+            Circle(5.0, 0.0, 1.0),
+        ]
+
+        cells = power_diagram(circles)
+
+        @test [cell.neighbours for cell in cells] == [[2], [1, 3], [2]]
+        @test same_polygon(cells[1].polygon, [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)])
+        @test same_polygon(cells[2].polygon, [(1.0, -1.0), (3.5, -1.0), (3.5, 1.0), (1.0, 1.0)])
+        @test same_polygon(cells[3].polygon, [(3.5, -1.0), (6.0, -1.0), (6.0, 1.0), (3.5, 1.0)])
+    end
+
+    @testset "Coincident-center power diagram" begin
+        circles = [
+            Circle(0.0, 0.0, 1.0),
+            Circle(0.0, 0.0, 2.0),
+            Circle(0.0, 0.0, 1.5),
+        ]
+
+        cells = power_diagram(circles)
+
+        @test same_polygon(cells[1].polygon, [(-2.0, -2.0), (2.0, -2.0), (2.0, 2.0), (-2.0, 2.0)])
+        @test isempty(cells[1].neighbours)
     end
 
     @testset "Empty input" begin
